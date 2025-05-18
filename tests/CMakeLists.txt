@@ -5,7 +5,7 @@ project(minisurge_tests)
 
 include(FetchContent)
 
-# 1) Fetch Catch2
+
 FetchContent_Declare(
   Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
@@ -13,52 +13,37 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
-# 2) Now find the Catch2 CMake package
+
 #    This sets up imported targets *and* makes the helper module available.
 find_package(Catch2 3.5.2 CONFIG REQUIRED)
 
-# 3) Enable CTest and load Catch’s helper
 include(CTest)
 include(Catch)   # <— defines catch_discover_tests()
 
-# 4) Declare your test executable
-add_executable(record_test
-  record_test.cpp
-)
+function(add_minisurge_catch_test TEST_NAME SOURCE_FILE TEST_PREFIX)
+    add_executable(${TEST_NAME} ${SOURCE_FILE})
 
-# make sure it sees your Record headers
-target_include_directories(record_test
-  PRIVATE ${CMAKE_SOURCE_DIR}/src
-)
+    # Ensure test executables can find headers from the main project source
+    target_include_directories(${TEST_NAME}
+        PRIVATE ${CMAKE_SOURCE_DIR}/src
+    )
 
-target_link_libraries(record_test
-  PRIVATE
-    minisurge_core       # your library
-    Catch2::Catch2WithMain
-)
+    target_link_libraries(${TEST_NAME}
+        PRIVATE
+        minisurge_core       # your library
+        Catch2::Catch2WithMain
+    )
 
-# 5) Discover every TEST_CASE in record_test
-catch_discover_tests(record_test
-  # optional: prefix the CTest test names
-  TEST_PREFIX "record."
-  # optional: pass extra flags to your tests
-  # EXTRA_ARGS --log-level debug
-)
-# New: WALReader tests
-add_executable(wal_test
-  wal_test.cpp
-)
+    catch_discover_tests(${TEST_NAME}
+        TEST_PREFIX "${TEST_PREFIX}."
+    )
+endfunction()
 
-target_include_directories(wal_test
-  PRIVATE ${CMAKE_SOURCE_DIR}/src
-)
+add_minisurge_catch_test(record_test record_test.cpp record)
+add_minisurge_catch_test(wal_test wal_test.cpp wal)
+add_minisurge_catch_test(memtable_test memtable_test.cpp memtable)
+add_minisurge_catch_test(bloom_filter_test bloom_filter_test.cpp bloom_filter)
 
-target_link_libraries(wal_test
-  PRIVATE
-    minisurge_core
-    Catch2::Catch2WithMain
-)
-
-catch_discover_tests(wal_test
-  TEST_PREFIX "wal."
-)
+find_package(benchmark REQUIRED)
+add_executable(record_benchmark benchmark.cpp)
+target_link_libraries(record_benchmark PRIVATE minisurge_core benchmark::benchmark)
